@@ -128,6 +128,12 @@ echo password_hash('your_password', PASSWORD_DEFAULT);
 - **Regular Users**: Regular users can update their profile and manage filaments but cannot manage users.
 - **Profile Page**: Users can change their password on the profile page.
 
+## Practical details?
+
+I personally add the filament to the database and print a temperature tower. Once printed, I write the ID beneath the temperature tower with a permanent marker and put it in my inventory box.
+
+This allows me to view what the filament looks like when printed, both feel, colour, texture etc when selecting a filament for a particular print and it also helps me enter the optimal temperature for each filament model/brand in the database.
+
 ## Support
 
 Provided as is, but happy to assist with any questions using issues.
