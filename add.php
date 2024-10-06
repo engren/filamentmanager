@@ -53,25 +53,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $notes = trim($_POST['notes']);
     $image_url = '';
 
+    // Debugging: Print purchase URL to verify value before binding it
+    var_dump($purchase_url); // Ensure this shows the correct URL
+
+    // Validation
     if (empty($brand) || empty($material) || empty($color)) {
         $error = "Brand, Material, and Color are required fields.";
     } elseif (!filter_var($purchase_url, FILTER_VALIDATE_URL) && !empty($purchase_url)) {
         $error = "Purchase URL is invalid.";
     } else {
+        // Handle image upload
         if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
             $image_url = 'uploads/' . basename($_FILES['image']['name']);
             move_uploaded_file($_FILES['image']['tmp_name'], $image_url);
         }
 
+        // Generate unique filament ID based on material (PLA-12345)
+        $random_number = random_int(10000, 99999);
+        $unique_id = strtoupper($material) . '-' . $random_number;
+
         if ($isEditing) {
             $sql = "UPDATE filaments SET brand=?, material=?, color=?, ideal_nozzle_temp=?, ideal_bed_temp=?, rolls_250g=?, rolls_500g=?, rolls_750g=?, rolls_1000g=?, rolls_2000g=?, purchase_url=?, notes=?, image_url=? WHERE id=?";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param('ssssiissssissi', $brand, $material, $color, $ideal_nozzle_temp, $ideal_bed_temp, $rolls_250g, $rolls_500g, $rolls_750g, $rolls_1000g, $rolls_2000g, $purchase_url, $notes, $image_url, $id);
+            $stmt->bind_param('ssssiisssssssi', $brand, $material, $color, $ideal_nozzle_temp, $ideal_bed_temp, $rolls_250g, $rolls_500g, $rolls_750g, $rolls_1000g, $rolls_2000g, $purchase_url, $notes, $image_url, $id);
         } else {
-            $unique_id = uniqid();
             $sql = "INSERT INTO filaments (brand, material, color, unique_id, ideal_nozzle_temp, ideal_bed_temp, rolls_250g, rolls_500g, rolls_750g, rolls_1000g, rolls_2000g, purchase_url, notes, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param('sssssiissssiss', $brand, $material, $color, $unique_id, $ideal_nozzle_temp, $ideal_bed_temp, $rolls_250g, $rolls_500g, $rolls_750g, $rolls_1000g, $rolls_2000g, $purchase_url, $notes, $image_url);
+            $stmt->bind_param('sssssiisssssss', $brand, $material, $color, $unique_id, $ideal_nozzle_temp, $ideal_bed_temp, $rolls_250g, $rolls_500g, $rolls_750g, $rolls_1000g, $rolls_2000g, $purchase_url, $notes, $image_url);
         }
 
         if ($stmt->execute()) {
@@ -94,27 +102,12 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $isEditing ? 'Edit Filament' : 'Add Filament'; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            margin-top: 70px;
-        }
-        td, th {
-            vertical-align: middle;
-            text-align: center;
-        }
-        .nowrap {
-            white-space: nowrap;
-        }
-        .narrow {
-            width: 60px;
-        }
-    </style>
 </head>
 <body>
 
 <?php include('navigation.php'); ?>
 
-<div class="container">
+<div class="container mt-5">
     <h1 class="mb-4"><?php echo $isEditing ? 'Edit Filament' : 'Add Filament'; ?></h1>
 
     <?php if ($error): ?>

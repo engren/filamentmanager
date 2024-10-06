@@ -164,7 +164,7 @@ $conn->close();
                         <td class="narrow"><?php echo htmlspecialchars($row['rolls_2000g']); ?></td>
                         <td>
                             <?php if (!empty($row['purchase_url'])): ?>
-                                <a href="<?php echo htmlspecialchars($row['purchase_url']); ?>" target="_blank" class="btn btn-sm btn-info">Buy</a>
+                                <a href="<?php echo htmlspecialchars($row['purchase_url']); ?>" target="_blank" class="btn btn-sm btn-info">Order</a>
                             <?php else: ?>
                                 N/A
                             <?php endif; ?>
