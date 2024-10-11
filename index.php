@@ -19,29 +19,32 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Handle search, filters, sorting, and pagination
 $search = isset($_GET['search']) ? '%' . $_GET['search'] . '%' : '%%';
 $filter_brand = isset($_GET['brand']) ? $_GET['brand'] : '';
 $filter_material = isset($_GET['material']) ? $_GET['material'] : '';
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'brand';
-$items_per_page = 10;
+$items_per_page = isset($_GET['items_per_page']) ? (int)$_GET['items_per_page'] : 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $items_per_page;
 
-$sql = "SELECT * FROM filaments WHERE (brand LIKE ? OR material LIKE ? OR color LIKE ?) ";
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'brand';
+$direction = isset($_GET['direction']) && $_GET['direction'] == 'desc' ? 'desc' : 'asc';
+$next_direction = $direction == 'asc' ? 'desc' : 'asc';  // Toggle sorting direction
+
+$sql = "SELECT * FROM filaments WHERE (brand LIKE ? OR material LIKE ? OR color LIKE ?)";
 $params = [$search, $search, $search];
 
 if (!empty($filter_brand)) {
-    $sql .= "AND brand = ? ";
+    $sql .= " AND brand = ?";
     $params[] = $filter_brand;
 }
 
 if (!empty($filter_material)) {
-    $sql .= "AND material = ? ";
+    $sql .= " AND material = ?";
     $params[] = $filter_material;
 }
 
-$sql .= "ORDER BY $sort LIMIT $items_per_page OFFSET $offset";
-
+$sql .= " ORDER BY $sort $direction LIMIT $items_per_page OFFSET $offset";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param(str_repeat('s', count($params)), ...$params);
 $stmt->execute();
@@ -100,7 +103,7 @@ $conn->close();
             <div class="col-md-4">
                 <input type="text" name="search" class="form-control" placeholder="Search" value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="brand" class="form-select">
                     <option value="">All Brands</option>
                     <?php while ($row = $brand_result->fetch_assoc()): ?>
@@ -110,7 +113,7 @@ $conn->close();
                     <?php endwhile; ?>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="material" class="form-select">
                     <option value="">All Materials</option>
                     <?php while ($row = $material_result->fetch_assoc()): ?>
@@ -131,12 +134,12 @@ $conn->close();
     <table class="table table-striped table-hover">
         <thead class="thead-dark">
             <tr>
-                <th class="nowrap"><a href="index.php?sort=unique_id">ID</a></th>
-                <th><a href="index.php?sort=brand">Brand</a></th>
-                <th><a href="index.php?sort=material">Material</a></th>
-                <th><a href="index.php?sort=color">Color</a></th>
-                <th><a href="index.php?sort=ideal_nozzle_temp">Nozzle Temp</a></th>
-                <th><a href="index.php?sort=ideal_bed_temp">Bed Temp</a></th>
+                <th class="nowrap"><a href="index.php?sort=unique_id&direction=<?php echo $next_direction; ?>">ID</a></th>
+                <th><a href="index.php?sort=brand&direction=<?php echo $next_direction; ?>">Brand</a></th>
+                <th><a href="index.php?sort=material&direction=<?php echo $next_direction; ?>">Material</a></th>
+                <th><a href="index.php?sort=color&direction=<?php echo $next_direction; ?>">Color</a></th>
+                <th><a href="index.php?sort=ideal_nozzle_temp&direction=<?php echo $next_direction; ?>">Nozzle Temp</a></th>
+                <th><a href="index.php?sort=ideal_bed_temp&direction=<?php echo $next_direction; ?>">Bed Temp</a></th>
                 <th class="narrow">250g Rolls</th>
                 <th class="narrow">500g Rolls</th>
                 <th class="narrow">750g Rolls</th>
@@ -179,23 +182,43 @@ $conn->close();
         </tbody>
     </table>
 
-    <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center">
-            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                <li class="page-item <?php if ($i == $page) echo 'active'; ?>">
-                    <a class="page-link" href="index.php?page=<?php echo $i; ?>&sort=<?php echo $sort; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&brand=<?php echo urlencode($filter_brand); ?>&material=<?php echo urlencode($filter_material); ?>">
-                        <?php echo $i; ?>
-                    </a>
-                </li>
-            <?php endfor; ?>
-        </ul>
-    </nav>
+    <div class="d-flex justify-content-between">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?php if ($i == $page) echo 'active'; ?>">
+                        <a class="page-link" href="index.php?page=<?php echo $i; ?>&sort=<?php echo $sort; ?>&direction=<?php echo $direction; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&brand=<?php echo urlencode($filter_brand); ?>&material=<?php echo urlencode($filter_material); ?>&items_per_page=<?php echo $items_per_page; ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    </li>
+                <?php endfor; ?>
+            </ul>
+        </nav>
+
+        <div class="form-group">
+            <label for="items_per_page">Items per page: </label>
+            <select id="items_per_page" name="items_per_page" class="form-select" onchange="changeItemsPerPage(this.value)">
+                <option value="10" <?php echo $items_per_page == 10 ? 'selected' : ''; ?>>10</option>
+                <option value="20" <?php echo $items_per_page == 20 ? 'selected' : ''; ?>>20</option>
+                <option value="50" <?php echo $items_per_page == 50 ? 'selected' : ''; ?>>50</option>
+                <option value="100" <?php echo $items_per_page == 100 ? 'selected' : ''; ?>>100</option>
+            </select>
+        </div>
+    </div>
 </div>
 
 <?php include('footer.php'); ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
+<script>
+    function changeItemsPerPage(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('items_per_page', value);
+        url.searchParams.set('page', 1);  // Reset to first page
+        window.location.href = url.toString();
+    }
+</script>
+<br><br><br>
 </body>
 </html>
 
